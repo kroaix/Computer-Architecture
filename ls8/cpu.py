@@ -8,11 +8,13 @@ class CPU:
     HLT = 0b00000001
     LDI = 0b10000010
     PRN = 0b01000111
+    ADD = 0b10100000
     MUL = 0b10100010
     PUSH = 0b01000101
     POP = 0b01000110
+    CALL = 0b01010000
+    RET = 0b00010001
     
-
     def __init__(self):
         """Construct a new CPU."""
         #pc = program counter
@@ -52,8 +54,11 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-        if op == "ADD":
+        if op == self.ADD:
+            # Retrieve the values in both registers
+            # Add and store result
             self.reg[reg_a] += self.reg[reg_b]
+            self.pc += 3
         elif op == self.HLT:
             self.running = False
             self.pc += 1
@@ -67,18 +72,36 @@ class CPU:
             self.reg[reg_a] *= self.reg[reg_b]
             self.pc += 3
         elif op == self.PUSH:
+            # Read the given register address
+            reg_address = self.ram[self.pc + 1]
+            value = self.reg[reg_address]
+            # move the stack pointer down
             self.reg[self.SP] -= 1
-            stack_pointer = self.reg[self.SP]
-            reg_num = self.ram_read(self.pc + 1)
-            value = self.reg[reg_num]
-            self.ram_write(stack_pointer, value)
+            # write the value to push, into the top of stack
+            self.ram[self.reg[self.SP]] = value
             self.pc += 2
         elif op == self.POP:
-            value = self.ram_read(self.reg[self.SP])
-            reg_num = self.ram_read(self.pc + 1)
-            self.reg[reg_num] = value
-            self.reg[self.SP] += 1 
+            # Read the given register address
+            reg_address = self.ram[self.pc + 1]
+            # Read the value at the top of the stack
+            # store that into the register given
+            self.reg[reg_address] = self.ram[self.reg[self.SP]]
+            # move the stack pointer back up
+            self.reg[self.SP] += 1
             self.pc += 2
+        elif op == self.CALL:
+            # Push the return address onto the stack
+            # Move the SP down
+            self.reg[self.SP] -= 1
+            # Write the value of the next line to return to in the code
+            self.ram[self.reg[self.SP]] = self.pc + 2
+            # Set the PC to whatever is given to us in the register
+            reg_num = self.ram[self.pc + 1]
+            self.pc = self.reg[reg_num]
+        elif op == self.RET:
+            # Pop the top of the stack and set the PC to the value of what was popped
+            self.pc = self.ram[self.reg[self.SP]]
+            self.reg[self.SP] += 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -105,6 +128,8 @@ class CPU:
     def run(self):
         """Run the CPU."""
         while self.running:
+            # Read a command from memory
+            # at the current PC location
             IR = self.ram[self.pc]
             reg_a = self.ram[self.pc + 1]
             reg_b = self.ram[self.pc + 2]
