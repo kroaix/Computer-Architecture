@@ -9,6 +9,8 @@ class CPU:
     LDI = 0b10000010
     PRN = 0b01000111
     MUL = 0b10100010
+    PUSH = 0b01000101
+    POP = 0b01000110
     
 
     def __init__(self):
@@ -19,6 +21,8 @@ class CPU:
         self.ram = [0] * 256
         #register = 8
         self.reg = [0] * 8
+        #stack pointer
+        self.SP = 7
         #we are going to default running to True
         self.running = True
 
@@ -62,6 +66,19 @@ class CPU:
         elif op == self.MUL:
             self.reg[reg_a] *= self.reg[reg_b]
             self.pc += 3
+        elif op == self.PUSH:
+            self.reg[self.SP] -= 1
+            stack_pointer = self.reg[self.SP]
+            reg_num = self.ram_read(self.pc + 1)
+            value = self.reg[reg_num]
+            self.ram_write(stack_pointer, value)
+            self.pc += 2
+        elif op == self.POP:
+            value = self.ram_read(self.reg[self.SP])
+            reg_num = self.ram_read(self.pc + 1)
+            self.reg[reg_num] = value
+            self.reg[self.SP] += 1 
+            self.pc += 2
         else:
             raise Exception("Unsupported ALU operation")
 
